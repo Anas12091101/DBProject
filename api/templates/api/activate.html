@@ -1,0 +1,10 @@
+{%autoescape off%}
+
+<h1 style="color: darkslateblue;">Hi {{user.username}}</h1>
+
+<h2 style="color: darkblue;">Please Verify your email by clicking on the link below</h2>
+
+http://{{domain}}{%url 'activate' uid64=uid token=token%}
+
+
+{%endautoescape%}

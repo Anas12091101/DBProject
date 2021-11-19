@@ -1,0 +1,10 @@
+{%autoescape off%}
+
+<h1 style="color: darkslateblue;">Hi {{user.username}}</h1>
+
+<h5 style="color: darkblue;">Forgot your Password? Dont worry \U0001f600  Just click the link below</h5>
+
+http://{{domain}}{%url 'reset' uid64=uid token=token%}
+
+
+{%endautoescape%}

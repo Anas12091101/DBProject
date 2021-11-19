@@ -1,0 +1,18 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('',views.categories,name='category'),#send marshallized categories data
+    # path('test',views.test),
+    path('categories/<str:pk>/products',views.Catwiseproducts,name="products"),#send products wrt categoires
+    path('product/<str:pk>',views.product,name="single"),#send single product
+    path('products',views.allproducts,name="allproducts"),
+    path('createuser',views.createuser,name='createuser'),
+    path('sendemaill',views.sendverificationemail,name='sendmail'),
+    path('activate/<uid64>/<token>',views.activate_user,name='activate'),
+    path('reset/<uid64>/<token>',views.renderreset,name='reset'),
+    path('resetpassword',views.resetPassword,name='resetpassword'),
+    path('resetpassword2/<uid64>/<token>',views.resetPasswordStep2,name='resetpassword2'),
+    path('addtocart',views.addtoCart,name="addtocart"),
+    path('removefromcart',views.removefromcart,name='removecartproduct'),
+    ]
