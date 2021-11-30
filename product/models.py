@@ -5,8 +5,8 @@ class Category(models.Model):
     name=models.CharField(max_length=200)
     # id=models.UUIDField(default=uuid.uuid4,primary_key=True,editable=False)
     created_at=models.DateTimeField(auto_now_add=True)
-    # def __str__(self):
-    #     return self.name
+    def __str__(self):
+        return self.name
 
 class Product(models.Model):
     name=models.CharField(max_length=200)
@@ -23,7 +23,8 @@ class Product(models.Model):
 class imgSrc(models.Model):  #other images of the product
     url=models.ImageField(null=True,blank=True,default=None)
     product=models.ForeignKey(Product,on_delete=models.CASCADE)
-    
+    def __str__(self):
+        return self.product.name
 
 class testclass(models.Model):
     img=models.TextField()

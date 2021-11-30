@@ -5,7 +5,7 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from .serializers import CartSerializer,CategorySerializer, ProductSerializer, TestSerializer
+from .serializers import CartSerializer,CategorySerializer, OrderSreializer, ProductSerializer, TestSerializer
 from product.models import Category, Product, testclass
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
@@ -21,6 +21,7 @@ from django.core import mail
 from dbproject.settings import EMAIL_HOST_USER
 from User.models import Profile
 from cart.models import CartProduct,Cart
+from orders.models import OrderProduct,Order
 # from django.contrib.auth.models import User as authuser
 import threading
 from django.db import connection, connections
@@ -208,14 +209,13 @@ def addtoCart(request):
     # print(connection.queries)
     product=Product.objects.raw('select * from product_product where product_product.id=%s',[id])
     product=product[0]
-    product.in_stock=product.in_stock-1
-    product.save()
+   
 
     # cartproduct,created=CartProduct.objects.get_or_create(product=product,profile=profile,cart=cart)
     # if not created:
     #     cartproduct.quantity=cartproduct.quantity+1
     #     cartproduct.save()
-    if product.in_stock>=0:
+    if product.in_stock>0:
         try:
             cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.PROFILE_ID = %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,profile.id,cart.id])
             # print(cartproduct[0])
@@ -229,6 +229,11 @@ def addtoCart(request):
             cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.PROFILE_ID = %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,profile.id,cart.id])
             # print(cartproduct[0])
             cartproduct=cartproduct[0]
+        product.in_stock=product.in_stock-1
+        product.save()
+        if product.in_stock<0:
+            product.instock=0
+        product.save()
         cart.price=cart.price+(cartproduct.product.price)
         cart.save()
         ser=CartSerializer(cart,many=False)
@@ -246,6 +251,8 @@ def removefromcart(request):
     id=request.data['id']
     cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.ID=%s',[id])
     cartproduct=cartproduct[0]
+    cartproduct.product.in_stock=cartproduct.product.in_stock+1
+    cartproduct.product.save()
     cartproduct.quantity=cartproduct.quantity-1
     if cartproduct.quantity<=0:
         cursor=connection.cursor()
@@ -256,8 +263,69 @@ def removefromcart(request):
         cart.save()
     else:
         cartproduct.save()
+        cart.price=cart.price-(cartproduct.product.price)
+        cart.save()
+    
+    
         # cartproduct.price=cartproduct.price-(cartproduct.product.price)
     return Response('Item quantity removed by 1')
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def insertproduct(request):
+    name=request.data['name']
+    category=request.data['category']
+    price=request.data['price']
+    primary_image=request.data['primary_image']
+    description=request.data['description']
+    in_stock=request.data['in_stock']
+    cursor=connections['default'].cursor()
+    cursor.execute('INSERT INTO PRODUCT_PRODUCT (NAME,CATEGORYID_ID,PRICE,PRIMARY_IMAGE,DESCRIPTION,IN_STOCK) VALUES(%s,%s,%s,%s,%s,%s)',[name,category,price,primary_image,description,in_stock])
+    data={'status':'INSERTED'}
+    return Response(data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def deleteproduct(request):
+    id=request.data['id']
+    cursor=connections['default'].cursor()
+    cursor.execute('DELETE FROM PRODUCT_PRODUCT WHERE ID=%s',[id])
+    data={'status':'DELETED'}
+    return Response(data)
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def updateproduct(request):
+    # product=Product.objects.raw('SELECT * FROM PRODUCT_PRODUCT WHERE ID=%s',[request.data['id']])
+    # product=product[0]
+    # product.name=request.data['name']
+    # cat=Category.objects.raw('SELECT * FROM PRODUCT_CATEGORY WHERE ID=%s',[request.data['category']])
+    # product.categoryId=cat[0]
+    # product.price=request.data['price']
+    # product.primary_image=request.data['primary_image']
+    # product.description=request.data['description']
+    # product.in_stock=request.data['in_stock']
+    # product.save()
+    cursor=connection.cursor()
+    cursor.execute('UPDATE PRODUCT_PRODUCT SET PRICE=%s,PRIMARY_IMAGE=%s,CATEGORYID_ID=%s,DESCRIPTION=%s,IN_STOCK=%s,NAME=%s WHERE ID=%s',[request.data['price'],request.data['primary_image'],request.data['category'],request.data['description'],request.data['in_stock'],request.data['name'],request.data['id']])
+    data={'status':'UPDATED'}
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def placeOrder(request):
+    print(request.data)
+    cursor=connection.cursor()
+    cursor.execute('INSERT INTO orders_Order (total_price,status,owner_id) VALUES (%s,%s,%s)',[request.data['price'],'PENDING',request.data['profile']])
+    obj=Order.objects.latest('id')
+    for c in request.data['cartproduct']:
+        cursor.execute('INSERT INTO ORDERS_ORDERPRODUCT (PRODUCT_ID,ORDER_ID,QUANTITY) VALUES (%s,%s,%s)',[c['product']['id'],obj.id,c['quantity']])
+    ser=OrderSreializer(obj,many=False)
+    data={'status':'Printed'}
+    return Response(ser.data)
+
 
 
 

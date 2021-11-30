@@ -1,9 +1,11 @@
 from django.db import models
+from django.db.models import fields
 
 from cart.models import Cart, CartProduct
 from product.models import Category, Product, imgSrc, testclass
 from django.contrib.auth.models import User
 from User.models import Profile
+from orders.models import Order,OrderProduct
 
 from rest_framework import serializers
 
@@ -66,3 +68,24 @@ class CartSerializer(serializers.ModelSerializer):
         cartproduct=obj.cartproduct_set.all()
         serializer=CartProductSerializer(cartproduct,many=True)
         return serializer.data
+
+class OrderProductSerializer(serializers.ModelSerializer):
+    product=serializers.SerializerMethodField()
+    class Meta:
+        model=OrderProduct
+        fields='__all__'
+    def get_product(self,obj):
+        product=obj.product
+        ser=ProductSerializer(product,many=False)
+        return ser.data
+
+class OrderSreializer(serializers.ModelSerializer):
+    orderproduct=serializers.SerializerMethodField()
+    class Meta:
+        model=Order
+        fields='__all__'
+    def get_orderproduct(self,obj):
+        orderproduct=obj.orderproduct_set.all()
+        serializer=OrderProductSerializer(orderproduct,many=True)
+        return serializer.data
+

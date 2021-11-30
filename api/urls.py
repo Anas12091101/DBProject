@@ -15,4 +15,8 @@ urlpatterns = [
     path('resetpassword2/<uid64>/<token>',views.resetPasswordStep2,name='resetpassword2'),
     path('addtocart',views.addtoCart,name="addtocart"),
     path('removefromcart',views.removefromcart,name='removecartproduct'),
+    path('insertproduct',views.insertproduct,name='insertproduct'),
+    path('deleteproduct',views.deleteproduct,name='deleteproduct'),
+    path('updateproduct',views.updateproduct,name='updateproduct'),
+    path('placeorder',views.placeOrder,name='PlaceOrder')
     ]
