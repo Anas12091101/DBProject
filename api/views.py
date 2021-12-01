@@ -326,10 +326,25 @@ def placeOrder(request):
     data={'status':'Printed'}
     return Response(ser.data)
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def vieworder(request):
+    orders=Order.objects.raw('SELECT * FROM ORDERS_ORDER')
+    order=[]
+    for o in orders:
+        order.append(o)
+    ser=OrderSreializer(order,many=True)
+    return Response(ser.data)
 
-
-
-
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
+def updateorderstatus(request):
+    order=Order.objects.raw('SELECT * FROM ORDERS_ORDER WHERE ID=%s',[request.data['id']])
+    order=order[0]
+    cursor=connection.cursor()
+    cursor.execute('UPDATE ORDERS_ORDER SET STATUS=%s where id=%s',[request.data['status'],order.id])
+    data={"STATUS":"STATUS UPDATED"}
+    return Response(data)
     
     
         

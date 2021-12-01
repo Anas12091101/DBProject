@@ -18,5 +18,7 @@ urlpatterns = [
     path('insertproduct',views.insertproduct,name='insertproduct'),
     path('deleteproduct',views.deleteproduct,name='deleteproduct'),
     path('updateproduct',views.updateproduct,name='updateproduct'),
-    path('placeorder',views.placeOrder,name='PlaceOrder')
+    path('placeorder',views.placeOrder,name='PlaceOrder'),
+    path('vieworder',views.vieworder,name='ViewOrder'),
+    path('updateorderstatus',views.updateorderstatus,name='updateorderstatus')
     ]

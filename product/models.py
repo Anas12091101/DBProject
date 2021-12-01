@@ -23,6 +23,7 @@ class Product(models.Model):
 class imgSrc(models.Model):  #other images of the product
     url=models.ImageField(null=True,blank=True,default=None)
     product=models.ForeignKey(Product,on_delete=models.CASCADE)
+    color=models.CharField(max_length=200,null=True,blank=True)
     def __str__(self):
         return self.product.name
 
