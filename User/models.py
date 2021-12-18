@@ -1,3 +1,4 @@
+from enum import unique
 from django.contrib.auth.models import User
 from django.db import models
 # from django.utils import timezone
@@ -10,7 +11,7 @@ from django.dispatch import receiver
 class Profile(models.Model):
     user=models.OneToOneField(User,on_delete=models.CASCADE)
     is_verified=models.BooleanField(default=False)
-    address=models.TextField(null=True)
+    phoneno=models.CharField(max_length=50,null=True)
     city=models.CharField(max_length=50,null=True)
 
 
@@ -24,4 +25,4 @@ def createprofile(sender,instance,created,**kwargs):
         profile=Profile.objects.create(
             user=user
         )
-
+        profile.save()

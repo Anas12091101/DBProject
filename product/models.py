@@ -4,13 +4,13 @@ import uuid
 class Category(models.Model):
     name=models.CharField(max_length=200)
     # id=models.UUIDField(default=uuid.uuid4,primary_key=True,editable=False)
-    created_at=models.DateTimeField(auto_now_add=True)
+    created=models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.name
 
 class Product(models.Model):
     name=models.CharField(max_length=200)
-    categoryId=models.ForeignKey(Category,on_delete=models.CASCADE)
+    categoryId=models.ForeignKey(Category,on_delete=models.SET_NULL,null=True)
     price=models.IntegerField(null=False,blank=False)
     primary_image=models.ImageField(null=True,blank=True,default=None,upload_to='images')
     description=models.TextField(null=True)

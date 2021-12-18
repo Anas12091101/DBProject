@@ -6,6 +6,7 @@ class Order(models.Model):
     owner=models.ForeignKey(Profile,on_delete=models.CASCADE)
     status=models.CharField(max_length=200,null=True)
     total_price=models.PositiveIntegerField(default=0,null=True)
+    created_at=models.DateTimeField(auto_now_add=True,null=True)
 
     def __str__(self):
         return self.owner.user.username

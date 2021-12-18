@@ -10,9 +10,9 @@ class Cart(models.Model):
         return self.profile.user.username
     
 class CartProduct(models.Model):
-    product=models.ForeignKey(Product,on_delete=models.CASCADE)
+    product=models.ForeignKey(Product,on_delete=models.CASCADE,null=True)
     quantity=models.PositiveIntegerField(default=0)
-    profile=models.ForeignKey(Profile,on_delete=models.CASCADE)
+    # profile=models.ForeignKey(Profile,on_delete=models.CASCADE)
     cart=models.ForeignKey(Cart,on_delete=models.CASCADE)
     def __str__(self):
         return self.product.name

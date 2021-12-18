@@ -20,5 +20,14 @@ urlpatterns = [
     path('updateproduct',views.updateproduct,name='updateproduct'),
     path('placeorder',views.placeOrder,name='PlaceOrder'),
     path('vieworder',views.vieworder,name='ViewOrder'),
-    path('updateorderstatus',views.updateorderstatus,name='updateorderstatus')
+    path('updateorderstatus',views.updateorderstatus,name='updateorderstatus'),
+    path('getuser',views.getuserprofile,name='GetUserProfile'),
+    path('viewcart',views.viewcart,name='viewcart'),
+    path('getallusers',views.getallusers,name='getallusers'),
+    path('insertcategory',views.insertcategory,name='insertcategory'),
+    path('deletecategory',views.deletecategory,name='deletecategory'),
+    path('updatecategory',views.updatecategory,name='updatecategory'),
+    path('deletecart',views.deletecart,name='deletecart'),
+    # path('uploadimg',views.upload_img,name='uploadimage'),
+    # path('image/<str:pk>',views.image,name='image')
     ]

@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.contrib.auth import login, logout, tokens
 from django.contrib.auth.models import User
 from django.http.response import HttpResponse,JsonResponse
@@ -5,8 +6,10 @@ from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from .serializers import CartSerializer,CategorySerializer, OrderSreializer, ProductSerializer, TestSerializer
-from product.models import Category, Product, testclass
+from .resetform import resetforms
+from api.insertform import ProductForm
+from .serializers import CartSerializer,CategorySerializer, OrderSreializer, ProductSerializer, TestSerializer, UserSerializer
+from product.models import Category, Product, imgSrc, testclass
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
 from rest_framework.decorators import permission_classes
@@ -33,14 +36,7 @@ class EmailThread(threading.Thread):
     def run(self):
         mail.send_mail(self.email["subject"],self.email["body"],EMAIL_HOST_USER,self.email["to"],html_message=self.email["body"])
 
-def dictfetchall(cursor):
-    desc=cursor.description
-    return [
-        dict(zip([col[0] for col in desc], row))
-        for row in cursor.fetchall()
-    ]
 @api_view(['GET'])
-# @permission_classes([IsAdminUser])
 def categories(request):
     category=Category.objects.raw('SELECT * FROM PRODUCT_CATEGORY')
     categories=[]
@@ -50,14 +46,15 @@ def categories(request):
     serializer=CategorySerializer(categories,many=True)
     return Response(serializer.data)
 
-@api_view(['GET'])
-def test(request):
-    obj=testclass.objects.all()
-    ser=TestSerializer(obj,many=True)
-    return Response(ser.data)
+# @api_view(['GET'])
+# def test(request):
+#     obj=testclass.objects.all()
+#     ser=TestSerializer(obj,many=True)
+#     return Response(ser.data)
 
 @api_view(['GET'])
 def Catwiseproducts(request,pk):
+    print(pk)
     category=Category.objects.raw("SELECT * FROM PRODUCT_CATEGORY WHERE PRODUCT_CATEGORY.ID = %s",[pk])
     product=Product.objects.raw("SELECT * FROM PRODUCT_PRODUCT WHERE PRODUCT_PRODUCT.categoryId_id = %s",[category[0].id])
     print(product[0])
@@ -69,7 +66,7 @@ def Catwiseproducts(request,pk):
 
 @api_view(['GET'])
 def product(request,pk):
-    product=Product.objects.raw("SELECT * FROM PRODUCT_PRODUCT WHERE PRODUCT_PRODUCT.ID = %s",pk)
+    product=Product.objects.raw("SELECT * FROM PRODUCT_PRODUCT WHERE PRODUCT_PRODUCT.ID = %s",[pk])
 
     ser=ProductSerializer(product[0],many=False)
     return Response(ser.data)
@@ -88,13 +85,29 @@ def allproducts(request):
 @api_view(['POST'])
 def createuser(request):
     data=request.data
-    user=User.objects.create(
-        username=data["username"],
-        password=make_password(data["password"]),
-        email=data["email"],
-    )
-    user.save()
-    return Response("USER CREATED")
+    try:
+        user=User.objects.raw('SELECT * FROM AUTH_USER WHERE EMAIL=%s',[request.data['email']])
+        user=user[0]
+        # print(user.username)
+        data={'ERROR':'USER WITH THIS EMAIL ALREADY EXISTS'}
+        print(data)
+        return Response(data)
+    except:
+        #    user=User.objects.create(
+        #     username=data["username"],
+        #     password=make_password(data["password"]),
+        #     email=data["email"],
+        # )
+        cursor=connection.cursor()
+        cursor.execute('INSERT INTO AUTH_USER (USERNAME,PASSWORD,EMAIL,IS_SUPERUSER,last_name,is_active,date_joined,first_name,is_staff) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)',[data['username'],make_password(data['password']),data['email'],False,'',True,datetime.now(),'',False])
+        user=User.objects.latest('id')
+        # print('ss')
+        cursor.execute('insert into user_profile (user_id,phoneno,city,is_verified) values(%s,%s,%s,%s)',[user.id,request.data['phone'],request.data['city'],False])
+        # profile=Profile.objects.raw('SELECT * FROM USER_PROFILE WHERE USER_ID=%s',[user.id])
+        # cursor=connection.cursor()
+        # cursor.execute('update user_profile set phoneno=%s, city=%s where user_id=%s',[request.data['phone'],request.data['city'],user.id])
+        # user.save()
+        return Response("USER CREATED")
 
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])
@@ -123,7 +136,8 @@ def sendverificationemail(request):
 def activate_user(request,uid64,token):
     try:
         uid=force_text(urlsafe_base64_decode(uid64))
-        user=User.objects.raw('SELECT * FROM "auth_user" WHERE "auth_user"."id" = %s',uid)
+        user=User.objects.raw('SELECT * FROM "auth_user" WHERE "auth_user"."id" = %s',[uid])
+        print(user[0].username)
         user=user[0]
     except Exception as e:
         user=None
@@ -162,7 +176,8 @@ def resetPassword(request):
     return JsonResponse("No email found",safe=False)
 
 def renderreset(request,uid64,token):
-    return render(request,'api/passwordresetform.html',{"uid":uid64,"token":token})
+    form=resetforms()
+    return render(request,'api/passwordresetform.html',{"uid":uid64,"token":token,"form":form})
 
 @api_view(['POST','GET'])
 def resetPasswordStep2(request,uid64,token):
@@ -172,11 +187,11 @@ def resetPasswordStep2(request,uid64,token):
         # user=User.objects.get(id=uid)
         user=User.objects.raw('SELECT * FROM "auth_user" WHERE "auth_user"."id" = %s',[uid])
         user=user[0]
-
+        print(request.POST)
         print(user.password)
         if reset_token.check_token(user,token):
-            data=request.data
-            user.password=make_password(data['Password'])
+            data=request.POST
+            user.password=make_password(data['password'])
             user.save()
             login(request,user)
             logout(request)
@@ -217,7 +232,7 @@ def addtoCart(request):
     #     cartproduct.save()
     if product.in_stock>0:
         try:
-            cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.PROFILE_ID = %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,profile.id,cart.id])
+            cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,cart.id])
             # print(cartproduct[0])
             cartproduct=cartproduct[0]
             # print(cartproduct.quantity)
@@ -225,14 +240,14 @@ def addtoCart(request):
             cartproduct.save()
         except:
             cursor=connections['default'].cursor()
-            cursor.execute('INSERT INTO CART_CARTPRODUCT (PROFILE_ID,PRODUCT_ID,CART_ID,quantity) VALUES(%s,%s,%s,%s)',[profile.id,product.id,cart.id,1])
-            cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.PROFILE_ID = %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,profile.id,cart.id])
+            cursor.execute('INSERT INTO CART_CARTPRODUCT (id,PRODUCT_ID,CART_ID,quantity) VALUES(%s,%s,%s,%s)',[89,product.id,cart.id,1])
+            cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,cart.id])
             # print(cartproduct[0])
             cartproduct=cartproduct[0]
         product.in_stock=product.in_stock-1
         product.save()
-        if product.in_stock<0:
-            product.instock=0
+        # if product.in_stock<0:
+        #     product.instock=0
         product.save()
         cart.price=cart.price+(cartproduct.product.price)
         cart.save()
@@ -273,14 +288,23 @@ def removefromcart(request):
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def insertproduct(request):
+    print(request.data)
     name=request.data['name']
     category=request.data['category']
+    cat=Category.objects.get(id=category)
     price=request.data['price']
     primary_image=request.data['primary_image']
     description=request.data['description']
     in_stock=request.data['in_stock']
     cursor=connections['default'].cursor()
-    cursor.execute('INSERT INTO PRODUCT_PRODUCT (NAME,CATEGORYID_ID,PRICE,PRIMARY_IMAGE,DESCRIPTION,IN_STOCK) VALUES(%s,%s,%s,%s,%s,%s)',[name,category,price,primary_image,description,in_stock])
+    # cursor.execute('INSERT INTO PRODUCT_PRODUCT (NAME,CATEGORYID_ID,PRICE,PRIMARY_IMAGE,DESCRIPTION,IN_STOCK) VALUES(%s,%s,%s,%s,%s,%s)',[name,category,price,primary_image,description,in_stock])
+    product=Product.objects.create(name=name,categoryId=cat,price=price,primary_image=primary_image,description=description,in_stock=in_stock)
+    try:
+        img1=imgSrc.objects.create(url=request.data['img1'],product=product)
+        img2=imgSrc.objects.create(url=request.data['img2'],product=product)
+        img3=imgSrc.objects.create(url=request.data['img3'],product=product)
+    except:
+       pass 
     data={'status':'INSERTED'}
     return Response(data)
 
@@ -298,38 +322,68 @@ def deleteproduct(request):
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def updateproduct(request):
-    # product=Product.objects.raw('SELECT * FROM PRODUCT_PRODUCT WHERE ID=%s',[request.data['id']])
-    # product=product[0]
-    # product.name=request.data['name']
-    # cat=Category.objects.raw('SELECT * FROM PRODUCT_CATEGORY WHERE ID=%s',[request.data['category']])
-    # product.categoryId=cat[0]
-    # product.price=request.data['price']
-    # product.primary_image=request.data['primary_image']
-    # product.description=request.data['description']
-    # product.in_stock=request.data['in_stock']
-    # product.save()
-    cursor=connection.cursor()
-    cursor.execute('UPDATE PRODUCT_PRODUCT SET PRICE=%s,PRIMARY_IMAGE=%s,CATEGORYID_ID=%s,DESCRIPTION=%s,IN_STOCK=%s,NAME=%s WHERE ID=%s',[request.data['price'],request.data['primary_image'],request.data['category'],request.data['description'],request.data['in_stock'],request.data['name'],request.data['id']])
+    print(request.data)
+    product=Product.objects.raw('SELECT * FROM PRODUCT_PRODUCT WHERE ID=%s',[request.data['id']])
+    product=product[0]
+    product.name=request.data['name']
+    cat=Category.objects.raw('SELECT * FROM PRODUCT_CATEGORY WHERE ID=%s',[request.data['category']])
+    product.categoryId=cat[0]
+    product.price=request.data['price']
+    product.primary_image=request.data['primary_image']
+    product.description=request.data['description']
+    product.in_stock=request.data['in_stock']
+    product.save()
+
+    try:
+        images=imgSrc.objects.raw('SELECT * FROM product_imgSrc where product_id=%s',[product.id])
+        images[0].url=request.data['img1']
+        images[1].url=request.data['img2']
+        images[2].url=request.data['img3']
+    except:
+        pass
+    # cursor=connection.cursor()
+    # cursor.execute('UPDATE PRODUCT_PRODUCT SET PRICE=%s,PRIMARY_IMAGE=%s,CATEGORYID_ID=%s,DESCRIPTION=%s,IN_STOCK=%s,NAME=%s WHERE ID=%s',[request.data['price'],request.data['primary_image'],request.data['category'],request.data['description'],request.data['in_stock'],request.data['name'],request.data['id']])
     data={'status':'UPDATED'}
     return Response(data)
 
-@api_view(['POST'])
+@api_view(['POST','DELETE'])
 @permission_classes([IsAuthenticated])
 def placeOrder(request):
-    print(request.data)
+    user=request.user
+    c=request.data['cart'][0]
+    # print(c['price'])
     cursor=connection.cursor()
-    cursor.execute('INSERT INTO orders_Order (total_price,status,owner_id) VALUES (%s,%s,%s)',[request.data['price'],'PENDING',request.data['profile']])
+    cursor.execute('INSERT INTO orders_Order (total_price,status,owner_id,created_at) VALUES (%s,%s,%s,%s)',[c['price'],'PENDING',c['profile'],datetime.now()])
     obj=Order.objects.latest('id')
-    for c in request.data['cartproduct']:
-        cursor.execute('INSERT INTO ORDERS_ORDERPRODUCT (PRODUCT_ID,ORDER_ID,QUANTITY) VALUES (%s,%s,%s)',[c['product']['id'],obj.id,c['quantity']])
+    for ca in c['cartproduct']:
+        cursor.execute('INSERT INTO ORDERS_ORDERPRODUCT (PRODUCT_ID,ORDER_ID,QUANTITY) VALUES (%s,%s,%s)',[ca['product']['id'],obj.id,ca['quantity']])
     ser=OrderSreializer(obj,many=False)
-    data={'status':'Printed'}
+    print("A: ",c['id'])
+    cart=Cart.objects.raw('SELECT * FROM CART_CART WHERE PROFILE_ID=%s',[user.profile.id])
+    cart=cart[0]
+    cart.delete()
+    # cursor.execute('DELETE FROM CART_CART WHERE ID = %s',[cart.id])
+    # data={'status':'Printed'}
     return Response(ser.data)
+
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def deletecart(request):
+    user=request.user
+    cart=Cart.objects.raw('SELECT * FROM CART_CART WHERE PROFILE_ID=%s',[user.profile.id])
+    cart=cart[0]
+    # cart.delete()
+    cursor=connections['default'].cursor()
+    print(cart.id)
+    cursor.execute('DELETE FROM CART_CART WHERE ID=%s',[14])
+    return Response('DELETED')
+
+
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def vieworder(request):
-    orders=Order.objects.raw('SELECT * FROM ORDERS_ORDER')
+    orders=Order.objects.raw('SELECT * FROM ORDERS_ORDER ORDER BY created_at DESC')
     order=[]
     for o in orders:
         order.append(o)
@@ -346,11 +400,63 @@ def updateorderstatus(request):
     data={"STATUS":"STATUS UPDATED"}
     return Response(data)
     
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def getuserprofile(request):
+    user=request.user
+    ser=UserSerializer(user,many=False)
+    return Response(ser.data)
     
-        
-    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def viewcart(request):
+    user=request.user
+    profile=Profile.objects.raw('SELECT * FROM USER_PROFILE WHERE USER_ID=%s',[user.id])
+    profile=profile[0]
+    cart=Cart.objects.raw('SELECT * from CART_CART where profile_id=%s',[profile.id])
+    ser=CartSerializer(cart,many=True)
+    return Response(ser.data)       
 
-    
-        
+#REQUIRES A 'name' ONLY    
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def insertcategory(request):
+    cursor=connection.cursor()
+    cursor.execute('INSERT INTO PRODUCT_CATEGORY (NAME,CREATED) VALUES(%s,%s)',[request.data['name'],datetime.now()])
+    return Response('INSERTED')
 
+#REQUIRES A 'id' ONLY
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def deletecategory(request):
+    cursor=connection.cursor()
+    cursor.execute('DELETE FROM PRODUCT_CATEGORY WHERE ID=%s',[request.data['id']])
+    return Response('DELETED')
 
+#REQUIRES BOTH 'name' AND 'id'
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
+def updatecategory(request):
+    cursor=connection.cursor()
+    cursor.execute('UPDATE PRODUCT_CATEGORY SET NAME=%s where id=%s',[request.data['name'],request.data['id']])
+    return Response('UPDATED')
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def getallusers(request):
+    # cursor=connection.cursor()
+    user=User.objects.raw('SELECT * FROM AUTH_USER u JOIN USER_PROFILE p WHERE u.id=p.user_id')
+    ser=UserSerializer(user,many=True)
+    return Response(ser.data)
+
+# @api_view(['POST'])
+# def upload_img(request):
+#     product=Product.objects.get(id=10)
+#     product.primary_image=request.data['image']
+#     product.save()
+#     return Response('saass')
+
+# def image(request,pk):
+#     product=Product.objects.get(id=pk)
+#     form=ProductForm(product)
+#     return render(request,'api/product.html',{'form':form})
