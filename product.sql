@@ -2,7 +2,7 @@ BEGIN;
 --
 -- Create model testclass
 --
-CREATE TABLE "product_testclass" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "img" text NOT NULL);
+-- CREATE TABLE "product_testclass" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "img" text NOT NULL);
 --
 -- Create model Category
 --

@@ -39,6 +39,7 @@ class EmailThread(threading.Thread):
 @api_view(['GET'])
 def categories(request):
     category=Category.objects.raw('SELECT * FROM PRODUCT_CATEGORY')
+    print(category)
     categories=[]
     for cat in category:
         categories.append(cat)
@@ -137,7 +138,7 @@ def activate_user(request,uid64,token):
     try:
         uid=force_text(urlsafe_base64_decode(uid64))
         user=User.objects.raw('SELECT * FROM "auth_user" WHERE "auth_user"."id" = %s',[uid])
-        print(user[0].username)
+        # print(user[0].username)
         user=user[0]
     except Exception as e:
         user=None
@@ -240,7 +241,7 @@ def addtoCart(request):
             cartproduct.save()
         except:
             cursor=connections['default'].cursor()
-            cursor.execute('INSERT INTO CART_CARTPRODUCT (id,PRODUCT_ID,CART_ID,quantity) VALUES(%s,%s,%s,%s)',[89,product.id,cart.id,1])
+            cursor.execute('INSERT INTO CART_CARTPRODUCT (PRODUCT_ID,CART_ID,quantity) VALUES(%s,%s,%s)',[product.id,cart.id,1])
             cartproduct=CartProduct.objects.raw('SELECT * FROM CART_CARTPRODUCT WHERE CART_CARTPRODUCT.PRODUCT_ID= %s AND CART_CARTPRODUCT.CART_ID= %s',[product.id,cart.id])
             # print(cartproduct[0])
             cartproduct=cartproduct[0]
@@ -396,7 +397,7 @@ def updateorderstatus(request):
     order=Order.objects.raw('SELECT * FROM ORDERS_ORDER WHERE ID=%s',[request.data['id']])
     order=order[0]
     cursor=connection.cursor()
-    cursor.execute('UPDATE ORDERS_ORDER SET STATUS=%s where id=%s',[request.data['status'],order.id])
+    cursor.execute('UPDATE ORDERS_ORDER SET STATUS="COMPLETED" where id=%s',[order.id])
     data={"STATUS":"STATUS UPDATED"}
     return Response(data)
     
